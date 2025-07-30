@@ -1,0 +1,19 @@
+{
+  "name": "stocks-portfolio-app",
+  "version": "1.0.0",
+  "description": "Stock Portfolio Management Application",
+  "scripts": {
+    "dev:client": "cd src && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build:client": "cd src && npm run build",
+    "build:server": "cd server && echo \"Server build complete\"",
+    "build": "npm run build:client && npm run build:server",
+    "start": "cd server && NODE_ENV=production node index.js",
+    "docker:build": "docker build -t stocks-portfolio-app .",
+    "docker:run": "docker run -p 8080:8080 stocks-portfolio-app"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.0"
+  }
+}
