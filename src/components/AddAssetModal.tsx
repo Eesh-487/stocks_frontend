@@ -14,21 +14,36 @@ interface AddAssetModalProps {
   }) => Promise<boolean>;
 }
 
-const categoryOptions = [
-  'Technology',
-  'Healthcare',
-  'Financials',
-  'Consumer',
-  'Energy',
-  'Telecom',
-  'Industrials',
-  'Materials',
-  'Utilities',
-  'Real Estate'
+
+const assetTypeOptions = [
+  'Stock',
+  'Mutual Fund',
+  'ETF',
+  'Bond',
+  'Commodity',
+  'Crypto',
+  'Real Estate',
+  'Cash',
+  'Other'
 ];
+
+const categoryOptionsMap: Record<string, string[]> = {
+  Stock: [
+    'Technology', 'Healthcare', 'Financials', 'Consumer', 'Energy', 'Telecom', 'Industrials', 'Materials', 'Utilities', 'Real Estate'
+  ],
+  'Mutual Fund': ['Equity', 'Debt', 'Hybrid', 'Index', 'Other'],
+  ETF: ['Equity', 'Bond', 'Commodity', 'Currency', 'Other'],
+  Bond: ['Government', 'Corporate', 'Municipal', 'Other'],
+  Commodity: ['Gold', 'Silver', 'Oil', 'Agriculture', 'Other'],
+  Crypto: ['Bitcoin', 'Ethereum', 'Altcoin', 'Stablecoin', 'Other'],
+  'Real Estate': ['Residential', 'Commercial', 'REIT', 'Other'],
+  Cash: ['INR', 'USD', 'EUR', 'Other'],
+  Other: ['Other']
+};
 
 const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd }) => {
   const [formData, setFormData] = useState({
+    asset_type: 'Stock',
     symbol: '',
     name: '',
     category: 'Technology',
@@ -118,6 +133,17 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd })
     setSearchResults([]);
   };
 
+  // Handle asset type change
+  const handleAssetTypeChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      asset_type: value,
+      category: categoryOptionsMap[value][0] || '',
+      symbol: '',
+      purchase_price: '',
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -129,18 +155,24 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd })
     setIsSubmitting(true);
 
     try {
-      const assetData = {
-        symbol: formData.symbol.toUpperCase(),
+      const assetData: any = {
+        asset_type: formData.asset_type,
         name: formData.name || formData.symbol.toUpperCase(),
         category: formData.category,
         quantity: parseFloat(formData.quantity),
-        purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : undefined,
       };
+      if (!['Cash', 'Other', 'Real Estate'].includes(formData.asset_type)) {
+        assetData.symbol = formData.symbol.toUpperCase();
+      }
+      if (['Cash', 'Other', 'Real Estate'].includes(formData.asset_type) || formData.purchase_price) {
+        assetData.purchase_price = formData.purchase_price ? parseFloat(formData.purchase_price) : undefined;
+      }
 
       const success = await onAdd(assetData);
 
       if (success) {
         setFormData({
+          asset_type: 'Stock',
           symbol: '',
           name: '',
           category: 'Technology',
@@ -199,54 +231,72 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd })
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Symbol *
+                  Asset Type *
                 </label>
-                <div className="relative" ref={searchRef}>
-                  <input
-                    type="text"
-                    value={formData.symbol}
-                    onChange={(e) => handleSymbolChange(e.target.value)}
-                    placeholder="AAPL"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white focus:ring-primary-500 focus:border-primary-500"
-                    required
-                    autoComplete="off"
-                  />
-                  {isSearching ? (
-                    <div className="absolute right-3 top-2.5">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    </div>
-                  ) : (
-                    <Search className="absolute right-3 top-2.5 text-gray-400" size={16} />
-                  )}
-                  
-                  {/* Search Results Dropdown */}
-                  {showDropdown && searchResults.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                      {searchResults.map((stock) => (
-                        <div
-                          key={stock.symbol}
-                          onClick={() => handleStockSelect(stock)}
-                          className="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 border-b border-gray-200 dark:border-gray-600 last:border-b-0"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="font-medium text-gray-900 dark:text-white">
-                                {stock.symbol}
+                <select
+                  value={formData.asset_type}
+                  onChange={e => handleAssetTypeChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white focus:ring-primary-500 focus:border-primary-500"
+                  required
+                >
+                  {assetTypeOptions.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Symbol input for all except Cash/Other/Real Estate */}
+              {!["Cash", "Other", "Real Estate"].includes(formData.asset_type) && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Symbol *
+                  </label>
+                  <div className="relative" ref={searchRef}>
+                    <input
+                      type="text"
+                      value={formData.symbol}
+                      onChange={(e) => handleSymbolChange(e.target.value)}
+                      placeholder="AAPL"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white focus:ring-primary-500 focus:border-primary-500"
+                      required
+                      autoComplete="off"
+                    />
+                    {isSearching ? (
+                      <div className="absolute right-3 top-2.5">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      </div>
+                    ) : (
+                      <Search className="absolute right-3 top-2.5 text-gray-400" size={16} />
+                    )}
+                    {/* Search Results Dropdown */}
+                    {showDropdown && searchResults.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        {searchResults.map((stock) => (
+                          <div
+                            key={stock.symbol}
+                            onClick={() => handleStockSelect(stock)}
+                            className="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 border-b border-gray-200 dark:border-gray-600 last:border-b-0"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="font-medium text-gray-900 dark:text-white">
+                                  {stock.symbol}
+                                </div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                                  {stock.name}
+                                </div>
                               </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                                {stock.name}
+                              <div className="text-xs text-gray-400 dark:text-gray-500">
+                                {stock.category}
                               </div>
-                            </div>
-                            <div className="text-xs text-gray-400 dark:text-gray-500">
-                              {stock.category}
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -275,7 +325,7 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd })
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white focus:ring-primary-500 focus:border-primary-500"
                   required
                 >
-                  {categoryOptions.map(category => (
+                  {(categoryOptionsMap[formData.asset_type] || []).map(category => (
                     <option key={category} value={category}>{category}</option>
                   ))}
                 </select>
@@ -295,24 +345,46 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd })
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Purchase Price (Auto-filled)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.purchase_price}
-                  onChange={(e) => handleInputChange('purchase_price', e.target.value)}
-                  placeholder="Market Price"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white focus:ring-primary-500 focus:border-primary-500"
-                  required
-                  readOnly={autoFilledFields.name || autoFilledFields.category}
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  This is auto-filled from the current market price when you select a stock.
-                </p>
-              </div>
+              {/* Purchase price for Cash, Other, Real Estate, or if user wants to override */}
+              {(['Cash', 'Other', 'Real Estate'].includes(formData.asset_type)) && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Purchase Price *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.purchase_price}
+                    onChange={(e) => handleInputChange('purchase_price', e.target.value)}
+                    placeholder="Enter price"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Enter the value for this asset.
+                  </p>
+                </div>
+              )}
+              {/* For stocks and similar, show auto-filled price as read-only */}
+              {(!['Cash', 'Other', 'Real Estate'].includes(formData.asset_type)) && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Purchase Price (Auto-filled)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.purchase_price}
+                    onChange={(e) => handleInputChange('purchase_price', e.target.value)}
+                    placeholder="Market Price"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white focus:ring-primary-500 focus:border-primary-500"
+                    readOnly={autoFilledFields.name || autoFilledFields.category}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    This is auto-filled from the current market price when you select a stock.
+                  </p>
+                </div>
+              )}
 
               {error && (
                 <div className="text-red-600 dark:text-red-400 text-sm">{error}</div>
