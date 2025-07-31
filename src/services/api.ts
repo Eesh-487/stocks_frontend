@@ -2,7 +2,7 @@
 const isDevelopment = import.meta.env.DEV;
 const API_BASE_URL = isDevelopment 
   ? (import.meta.env.VITE_API_URL || 'https://server-nwxv.onrender.com/api')
-  : '/api';
+  : (import.meta.env.VITE_API_URL || 'https://server-nwxv.onrender.com/api');
 
 class ApiService {
   private baseURL: string;
