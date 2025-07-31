@@ -162,17 +162,19 @@ const PortfolioPage: React.FC = () => {
   };
 
   const handleAddAsset = async (newAsset: { symbol: string; name: string; category: string; quantity: number }) => {
-    try {
-      const success = await addHolding(newAsset);
-      if (success) {
-        setShowAddModal(false);
-      }
-      return success;
-    } catch (error) {
-      console.error('Failed to add asset:', error);
-      return false;
+  try {
+    const success = await addHolding(newAsset);
+    if (success) {
+      // Optionally force a refresh here
+      await refreshHoldings();
+      setShowAddModal(false);
     }
-  };
+    return success;
+  } catch (error) {
+    console.error('Failed to add asset:', error);
+    return false;
+  }
+};
 
   // Cleanup now happens automatically when refreshing holdings
 
