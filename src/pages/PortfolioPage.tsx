@@ -165,8 +165,7 @@ const PortfolioPage: React.FC = () => {
   try {
     const success = await addHolding(newAsset);
     if (success) {
-      // Optionally force a refresh here
-      await refreshHoldings();
+      await refreshHoldings(); // Ensure holdings are refreshed before closing
       setShowAddModal(false);
     }
     return success;
