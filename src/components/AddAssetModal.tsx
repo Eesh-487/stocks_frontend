@@ -17,7 +17,6 @@ interface AddAssetModalProps {
 
 const assetTypeOptions = [
   'Stock',
-  'Mutual Fund',
   'ETF',
   'Bond',
   'Commodity',
@@ -31,7 +30,6 @@ const categoryOptionsMap: Record<string, string[]> = {
   Stock: [
     'Technology', 'Healthcare', 'Financials', 'Consumer', 'Energy', 'Telecom', 'Industrials', 'Materials', 'Utilities', 'Real Estate'
   ],
-  'Mutual Fund': ['Equity', 'Debt', 'Hybrid', 'Index', 'Other'],
   ETF: ['Equity', 'Bond', 'Commodity', 'Currency', 'Other'],
   Bond: ['Government', 'Corporate', 'Municipal', 'Other'],
   Commodity: ['Gold', 'Silver', 'Oil', 'Agriculture', 'Other'],
@@ -80,8 +78,8 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd })
     };
   }, [searchTimeout]);
 
-  // Search for assets (stocks or mutual funds)
-  const searchAssets = async (query: string) => {
+  // Search for stocks
+  const searchStocks = async (query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
       setShowDropdown(false);
@@ -90,35 +88,11 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd })
 
     setIsSearching(true);
     try {
-      let results: StockInfo[] = [];
-      
-      // Search based on asset type
-      if (formData.asset_type === 'Mutual Fund') {
-        // Get mutual funds with potentially updated NAVs
-        results = await stockLookupService.searchMutualFunds(query);
-        
-        // Trigger NAV updates for the mutual funds
-        await stockLookupService.updateMutualFundNAVs();
-        
-        // For each result, try to get latest NAV
-        for (const fund of results) {
-          const latestNAV = await stockLookupService.getMutualFundNAV(fund.symbol);
-          if (latestNAV) {
-            fund.nav = latestNAV;
-            fund.price = latestNAV;  // Keep price field in sync for consistency
-          }
-        }
-      } else {
-        // Default to stock search with filter
-        results = await stockLookupService.searchStocks(query, { 
-          type: formData.asset_type.toLowerCase().replace(' ', '') as any
-        });
-      }
-      
+      const results = await stockLookupService.searchStocks(query);
       setSearchResults(results);
       setShowDropdown(results.length > 0);
     } catch (error) {
-      console.error('Asset search failed:', error);
+      console.error('Stock search failed:', error);
       setSearchResults([]);
       setShowDropdown(false);
     } finally {
@@ -137,47 +111,21 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd })
 
     // Set new timeout for search
     const timeout = setTimeout(() => {
-      searchAssets(value);
+      searchStocks(value);
     }, 300); // 300ms debounce
 
     setSearchTimeout(timeout);
   };
 
-  // Handle asset selection from dropdown
-  const handleStockSelect = async (asset: StockInfo) => {
-    const newFormData = {
-      ...formData,
-      symbol: asset.symbol,
-      name: asset.name,
-      category: asset.category,
-    };
-    
-    try {
-      // For mutual funds, get latest NAV
-      if (asset.type === 'mutualfund') {
-        // Get updated NAV
-        const latestNAV = await stockLookupService.getMutualFundNAV(asset.symbol);
-        if (latestNAV) {
-          newFormData.purchase_price = latestNAV.toString();
-          console.log(`Latest NAV for ${asset.symbol}: ${latestNAV}`);
-        } else if (asset.nav) {
-          newFormData.purchase_price = asset.nav.toString();
-        }
-      } else if (asset.price) {
-        // For stocks use price
-        newFormData.purchase_price = asset.price.toString();
-      }
-    } catch (error) {
-      console.error("Error fetching latest asset data:", error);
-      // Fallback to static data
-      if (asset.type === 'mutualfund' && asset.nav) {
-        newFormData.purchase_price = asset.nav.toString();
-      } else if (asset.price) {
-        newFormData.purchase_price = asset.price.toString();
-      }
-    }
-    
-    setFormData(newFormData);
+  // Handle stock selection from dropdown
+  const handleStockSelect = (stock: StockInfo) => {
+    setFormData(prev => ({
+      ...prev,
+      symbol: stock.symbol,
+      name: stock.name,
+      category: stock.category,
+      purchase_price: stock.price ? stock.price.toString() : ''
+    }));
     setAutoFilledFields({ name: true, category: true });
     setShowDropdown(false);
     setSearchResults([]);
@@ -321,58 +269,23 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd })
                     {/* Search Results Dropdown */}
                     {showDropdown && searchResults.length > 0 && (
                       <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                        {searchResults.map((asset) => (
+                        {searchResults.map((stock) => (
                           <div
-                            key={asset.symbol}
-                            onClick={() => handleStockSelect(asset)}
+                            key={stock.symbol}
+                            onClick={() => handleStockSelect(stock)}
                             className="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 border-b border-gray-200 dark:border-gray-600 last:border-b-0"
                           >
                             <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <div className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
-                                  <span>{asset.symbol}</span>
-                                  {asset.type && (
-                                    <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                      asset.type === 'mutualfund' 
-                                        ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200' 
-                                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                    }`}>
-                                      {asset.type === 'mutualfund' ? 'MF' : 'Stock'}
-                                    </span>
-                                  )}
+                              <div>
+                                <div className="font-medium text-gray-900 dark:text-white">
+                                  {stock.symbol}
                                 </div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                                  {asset.name}
+                                  {stock.name}
                                 </div>
-                                {asset.type === 'mutualfund' && asset.amc && (
-                                  <div className="text-xs text-gray-400 dark:text-gray-500">
-                                    {asset.amc}
-                                  </div>
-                                )}
-                                {asset.type === 'mutualfund' && asset.expense_ratio !== undefined && (
-                                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                                    Expense: {asset.expense_ratio}%
-                                  </div>
-                                )}
                               </div>
-                              <div className="text-xs text-gray-400 dark:text-gray-500 ml-2 min-w-[80px] text-right">
-                                {asset.category}
-                                {asset.type === 'mutualfund' && asset.nav && (
-                                  <div className="font-medium text-gray-700 dark:text-gray-300 mt-1">
-                                    NAV: ₹{asset.nav}
-                                  </div>
-                                )}
-                                {asset.type === 'mutualfund' && asset.risk_level && (
-                                  <div className="text-xs mt-1">
-                                    <span className={`px-1.5 py-0.5 rounded ${
-                                      asset.risk_level === 'Low' ? 'bg-green-100 text-green-800' :
-                                      asset.risk_level === 'Moderate' ? 'bg-yellow-100 text-yellow-800' :
-                                      'bg-red-100 text-red-800'
-                                    }`}>
-                                      {asset.risk_level} Risk
-                                    </span>
-                                  </div>
-                                )}
+                              <div className="text-xs text-gray-400 dark:text-gray-500">
+                                {stock.category}
                               </div>
                             </div>
                           </div>
@@ -450,8 +363,8 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd })
                   </p>
                 </div>
               )}
-              {/* For stocks, show auto-filled price as potentially editable */}
-              {(formData.asset_type === 'Stock' && !['Cash', 'Other', 'Real Estate'].includes(formData.asset_type)) && (
+              {/* For stocks and similar, show auto-filled price as read-only */}
+              {(!['Cash', 'Other', 'Real Estate'].includes(formData.asset_type)) && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Purchase Price (Auto-filled)
@@ -467,45 +380,6 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd })
                   />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     This is auto-filled from the current market price when you select a stock.
-                  </p>
-                </div>
-              )}
-              {/* For mutual funds, show NAV as purchase price */}
-              {(formData.asset_type === 'Mutual Fund') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    NAV (Auto-filled)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.purchase_price}
-                    onChange={(e) => handleInputChange('purchase_price', e.target.value)}
-                    placeholder="Net Asset Value"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white focus:ring-primary-500 focus:border-primary-500"
-                    readOnly={autoFilledFields.name || autoFilledFields.category}
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    This is the latest Net Asset Value (NAV) for the selected mutual fund.
-                  </p>
-                </div>
-              )}
-              {/* For ETFs and bonds */}
-              {(['ETF', 'Bond'].includes(formData.asset_type)) && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Purchase Price
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.purchase_price}
-                    onChange={(e) => handleInputChange('purchase_price', e.target.value)}
-                    placeholder="Market Price"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm dark:bg-gray-700 dark:text-white focus:ring-primary-500 focus:border-primary-500"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Enter the purchase price for this {formData.asset_type.toLowerCase()}.
                   </p>
                 </div>
               )}
