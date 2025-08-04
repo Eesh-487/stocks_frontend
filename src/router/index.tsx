@@ -7,7 +7,7 @@ import DashboardPage from '../pages/DashboardPage';
 import PortfolioPage from '../pages/PortfolioPage';
 import RiskPage from '../pages/RiskPage';
 import PerformancePage from '../pages/PerformancePage';
-import OptimizationPage from '../pages/OptimizationPage';
+import EnhancedOptimizationPage from '../pages/EnhancedOptimizationPage';
 import ProfilePage from '../pages/ProfilePage';
 import SettingsPage from '../pages/SettingsPage';
 import { ROUTES } from '../constants/routes';
@@ -55,7 +55,7 @@ const AppRouter = () => {
         <Route path={ROUTES.PORTFOLIO} element={<PortfolioPage />} />
         <Route path={ROUTES.RISK} element={<RiskPage />} />
         <Route path={ROUTES.PERFORMANCE} element={<PerformancePage />} />
-        <Route path={ROUTES.OPTIMIZATION} element={<OptimizationPage />} />
+        <Route path={ROUTES.OPTIMIZATION} element={<EnhancedOptimizationPage />} />
         <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
         <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
       </Route>

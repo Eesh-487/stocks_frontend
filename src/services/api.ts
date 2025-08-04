@@ -411,6 +411,11 @@ class ApiService {
     risk_tolerance: number;
     max_position_size?: number;
     constraints?: Record<string, any>;
+    estimation?: {
+      returns?: 'historical_mean' | 'ewma' | 'capm' | 'factor_model';
+      covariance?: 'shrinkage' | 'ewma' | 'factor_model' | 'sample';
+      lookback?: number;
+    };
   }) {
     return this.request<{
       id: string;
@@ -421,21 +426,87 @@ class ApiService {
         value: number;
         percentage: number;
       }>;
-      optimized_allocation: Array<{
-        name: string;
-        percentage: number;
+      optimized_allocation: Record<string, {
+        percentage: string;
         change: number;
       }>;
       expected_return: number;
       expected_volatility: number;
-      sharpe_improvement: number;
+      sharpe_ratio?: number;
+      cvar?: number;
+      efficient_frontier?: Array<{
+        risk: number;
+        return: number;
+        weights: Record<string, number>;
+      }>;
       implementation_plan: Array<{
         sector: string;
         action: string;
         change_percent: number;
         priority: string;
       }>;
+      estimation_methods: {
+        returns: string;
+        covariance: string;
+        lookback_days: number;
+      };
     }>('/optimization/optimize', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  }
+
+  async getEfficientFrontier(params: {
+    symbols: string[];
+    estimation?: {
+      returns?: 'historical_mean' | 'ewma' | 'capm' | 'factor_model';
+      covariance?: 'shrinkage' | 'ewma' | 'factor_model' | 'sample';
+      lookback?: number;
+    };
+    points?: number;
+  }) {
+    return this.request<{
+      symbols: string[];
+      points: Array<{
+        risk: number;
+        return: number;
+        weights: Record<string, number>;
+      }>;
+      estimation_methods: {
+        returns: string;
+        covariance: string;
+        lookback_days: number;
+      };
+      error?: string;
+    }>('/optimization/efficient-frontier', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  }
+
+  async getRandomPortfolios(params: {
+    symbols: string[];
+    count?: number;
+    estimation?: {
+      returns?: 'historical_mean' | 'ewma' | 'capm' | 'factor_model';
+      covariance?: 'shrinkage' | 'ewma' | 'factor_model' | 'sample';
+      lookback?: number;
+    };
+  }) {
+    return this.request<{
+      portfolios: Array<{
+        risk: number;
+        return: number;
+        weights: number[];
+      }>;
+      symbols: string[];
+      estimation_methods: {
+        returns: string;
+        covariance: string;
+        lookback_days: number;
+      };
+      error?: string;
+    }>('/optimization/random-portfolios', {
       method: 'POST',
       body: JSON.stringify(params),
     });
