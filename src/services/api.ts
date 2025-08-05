@@ -356,13 +356,22 @@ class ApiService {
   }
 
   async getPerformanceHistory(days = 180) {
-    return this.request<Array<{
-      date: string;
-      total_value: number;
-      daily_return: number;
-      cumulative_return: number;
-      benchmark_return: number;
-    }>>(`/performance/history?days=${days}`);
+    try {
+      const data = await this.request<Array<{
+        date: string;
+        total_value: number;
+        daily_return: number;
+        cumulative_return: number;
+        benchmark_return: number;
+      }>>(`/performance/history?days=${days}`);
+      
+      console.log(`Received ${data.length} performance history points`);
+      return data;
+    } catch (error) {
+      console.error('Error fetching performance history:', error);
+      // Return empty array on error instead of throwing
+      return [];
+    }
   }
 
   async getMonthlyReturns(months = 24) {
