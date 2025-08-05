@@ -39,6 +39,7 @@ class ApiService {
     };
 
     try {
+      console.log(`API Request: ${config.method || 'GET'} ${url}`);
       const response = await fetch(url, config);
       
       if (!response.ok) {
@@ -48,13 +49,24 @@ class ApiService {
           throw new Error('Unauthorized');
         }
         
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
+        // Try to get error details from the response
+        let errorDetails = '';
+        try {
+          const errorData = await response.json();
+          errorDetails = errorData.error || errorData.message || JSON.stringify(errorData);
+        } catch (e) {
+          // If we can't parse JSON, just use the status text
+          errorDetails = response.statusText;
+        }
+        
+        const errorMessage = `API Error ${response.status}: ${errorDetails}`;
+        console.error(errorMessage);
+        throw new Error(errorMessage);
       }
-
+      
       return await response.json();
     } catch (error) {
-      console.error(`API request failed: ${endpoint}`, error);
+      console.error(`API request failed for ${url}:`, error);
       throw error;
     }
   }
@@ -190,11 +202,14 @@ class ApiService {
       total_gain_loss_percent: number;
     }>('/portfolio/holdings');
   }  async addHolding(holding: {
-    symbol: string;
+    asset_type?: string;
+    symbol?: string;
     name: string;
     category: string;
     quantity: number;
+    purchase_price?: number;
   }) {
+    console.log('Sending addHolding request with:', holding);
     return this.request<{
       message: string;
       currentPrice: number;
