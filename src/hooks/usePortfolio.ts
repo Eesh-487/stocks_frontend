@@ -71,12 +71,33 @@ export const usePortfolio = () => {
   const addHolding = useCallback(async (holding: NewHolding) => {
     try {
       setError(null);
+      console.log('Adding holding:', holding);
       
-      await apiService.addHolding(holding);
-      await fetchHoldings(); // Refresh the list
+      const result = await apiService.addHolding(holding);
+      console.log('Add holding result:', result);
+      
+      // Wait a moment before refreshing to ensure DB consistency
+      setTimeout(async () => {
+        await fetchHoldings(); // Refresh the list
+      }, 500);
+      
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add holding');
+      // Extract more specific error message if available
+      let errorMessage = 'Failed to add holding';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+        
+        // Try to extract API error details
+        if (err.message.includes('API Error')) {
+          const match = err.message.match(/API Error \d+: (.*)/);
+          if (match && match[1]) {
+            errorMessage = match[1];
+          }
+        }
+      }
+      
+      setError(errorMessage);
       console.error('Add holding error:', err);
       return false;
     }

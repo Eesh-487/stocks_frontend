@@ -122,18 +122,26 @@ export const useRealTimeData = () => {
 
     // Real WebSocket mode
     // Set up WebSocket event listeners
-    const handleMarketDataUpdate = (data: MarketData[] | any) => {
-      if (!Array.isArray(data)) {
-        console.warn('handleMarketDataUpdate received non-array data:', data);
-        return;
-      }
-      setMarketData(prev => {
-        const newMap = new Map(prev);
-        data.forEach(item => {
-          newMap.set(item.symbol, item);
+    const handleMarketDataUpdate = (data: MarketData[] | MarketData) => {
+      if (Array.isArray(data)) {
+        // Handle array of market data
+        setMarketData(prev => {
+          const newMap = new Map(prev);
+          data.forEach(item => {
+            newMap.set(item.symbol, item);
+          });
+          return newMap;
         });
-        return newMap;
-      });
+      } else if (data && typeof data === 'object' && 'symbol' in data) {
+        // Handle single market data object
+        setMarketData(prev => {
+          const newMap = new Map(prev);
+          newMap.set(data.symbol, data as MarketData);
+          return newMap;
+        });
+      } else {
+        console.warn('handleMarketDataUpdate received invalid data:', data);
+      }
     };
 
     const handleMarketUpdate = (data: MarketData) => {
