@@ -19,10 +19,12 @@ interface PortfolioHolding {
 }
 
 interface NewHolding {
-  symbol: string;
+  asset_type?: string;
+  symbol?: string;
   name: string;
   category: string;
   quantity: number;
+  purchase_price?: number;
 }
 
 export const usePortfolio = () => {

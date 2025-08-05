@@ -209,14 +209,21 @@ class ApiService {
     quantity: number;
     purchase_price?: number;
   }) {
-    console.log('Sending addHolding request with:', holding);
+    // Ensure correct data types before sending
+    const payload = {
+      ...holding,
+      quantity: Number(holding.quantity),  // Ensure it's a number
+      purchase_price: holding.purchase_price !== undefined ? Number(holding.purchase_price) : undefined
+    };
+    
+    console.log('Sending addHolding request with:', payload);
     return this.request<{
       message: string;
       currentPrice: number;
       purchasePrice: number;
     }>('/portfolio/holdings', {
       method: 'POST',
-      body: JSON.stringify(holding),
+      body: JSON.stringify(payload),
     });
   }
 

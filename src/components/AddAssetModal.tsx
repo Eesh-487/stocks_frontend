@@ -155,17 +155,36 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd })
     try {
       const assetData: any = {
         asset_type: formData.asset_type,
-        name: formData.name || formData.symbol.toUpperCase(),
+        name: formData.name || (formData.symbol ? formData.symbol.toUpperCase() : 'Unknown'),
         category: formData.category,
         quantity: parseFloat(formData.quantity),
       };
+      
+      // Handle symbol based on asset type
       if (!['Cash', 'Other', 'Real Estate'].includes(formData.asset_type)) {
+        if (!formData.symbol) {
+          setError('Symbol is required for this asset type.');
+          setIsSubmitting(false);
+          return;
+        }
         assetData.symbol = formData.symbol.toUpperCase();
       }
-      if (['Cash', 'Other', 'Real Estate'].includes(formData.asset_type) || formData.purchase_price) {
-        assetData.purchase_price = formData.purchase_price ? parseFloat(formData.purchase_price) : undefined;
+      
+      // Handle purchase price
+      if (['Cash', 'Other', 'Real Estate'].includes(formData.asset_type)) {
+        // Purchase price is required for these asset types
+        if (!formData.purchase_price) {
+          setError('Purchase price is required for this asset type.');
+          setIsSubmitting(false);
+          return;
+        }
+        assetData.purchase_price = parseFloat(formData.purchase_price);
+      } else if (formData.purchase_price) {
+        // Optional for other asset types
+        assetData.purchase_price = parseFloat(formData.purchase_price);
       }
-
+      
+      console.log('Submitting asset data:', assetData);
       const success = await onAdd(assetData);
 
       if (success) {
@@ -181,7 +200,22 @@ const AddAssetModal: React.FC<AddAssetModalProps> = ({ isOpen, onClose, onAdd })
         onClose();
       }
     } catch (err) {
-      setError('Failed to add asset. Please try again.');
+      console.error('Error adding asset:', err);
+      if (err instanceof Error) {
+        // Try to extract specific error messages
+        if (err.message.includes('API Error')) {
+          const match = err.message.match(/API Error \d+: (.*)/);
+          if (match && match[1]) {
+            setError(`Error: ${match[1]}`);
+          } else {
+            setError(err.message);
+          }
+        } else {
+          setError(`Failed to add asset: ${err.message}`);
+        }
+      } else {
+        setError('Failed to add asset. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
